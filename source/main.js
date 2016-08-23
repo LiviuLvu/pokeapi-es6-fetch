@@ -1,5 +1,4 @@
 'use strict';
-// continue from 14:23
 
 const fetchOptions = {
 	headers: {
@@ -20,15 +19,61 @@ $('form').on('submit', function(e) {
 		return fetch(`http://pokeapi.co/api/v2/type/${elem}/`, fetchOptions)
 	});
 	// when fetch resolves it will return a response object
-	Promise.all(trainerTypeCalls)
-		.then(data => {
-			data = data.map(singleData => singleData.json());
-			Promise.all(data)
-				.then(res => {
-					console.log(res);
-				});
+	getPromiseData(trainerTypeCalls)
+		.then(result => {
+			console.log(result);
+			getDoubleDamagePokemon(result);
 		});
 });
+
+function getDoubleDamagePokemon(pokemonTypes) {
+	// get data as pokemonTypes
+	pokemonTypes = pokemonTypes
+		.map(types => {
+			// multiple arrays inside an array
+			return types.damage_relations.double_damage_from
+		})
+		// flatten to a simple array of objects
+		.reduce(flatten, [])
+		// take each object in array and get type
+		.map(type => {
+			return fetch(type.url, fetchOptions);
+		});
+	getPromiseData(pokemonTypes)
+		.then(results => {
+			console.log(results);
+			buildTeam(results);
+		});
+}
+
+function buildTeam(pokemons) {
+	let team = [];
+	pokemons = pokemons
+		.map(pokemon => {
+			return pokemon.pokemon;
+		})
+		// parameters are: callback to run, initial value
+		.reduce(flatten, [])
+		.map(pokemon => pokemon.pokemon);
+
+	for (let i = 0; i < 6; i++) {
+		team.push(getRandomPokemon(pokemons));
+	}
+	
+	team = team.map(pokemon => {
+		return fetch(pokemon.url,fetchOptions);
+	});
+	getPromiseData(team)
+		.then(pokemonData => {
+			displayPokemon(pokemonData);
+		});
+}
+
+function getRandomPokemon(pokemonArray) {
+	return pokemonArray[Math.round(Math.random() * pokemonArray.length)];
+}
+
+const flatten = (a, b) => [...a, ...b];
 
 // takes array of fetch calls
 function getPromiseData(promisesArray) {
@@ -44,11 +89,11 @@ function getPromiseData(promisesArray) {
 				Promise.all(res).then(resolve);
 			})
 			.catch(reject);
-	})
+	});
 }
 
 function displayPokemon(pokemon) {
-	// loop through and display the pokemon
+	// loop through and display the pokemon on page
 	pokemon.forEach(function(poke) {
 		let $container = $('<div>').addClass('pokemon');
 		let $image = $('<img>').attr('src', `http://pokeapi.co/media/img/${poke.id}.png`);
@@ -57,4 +102,3 @@ function displayPokemon(pokemon) {
 		$('.poke-container').append($container);
 	});
 }
-
